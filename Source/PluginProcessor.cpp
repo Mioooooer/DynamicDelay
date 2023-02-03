@@ -10,6 +10,7 @@
 
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include <vector>
 
 //==============================================================================
 DynamicDelayAudioProcessor::DynamicDelayAudioProcessor():delayBuffer(2,1)
@@ -20,9 +21,14 @@ DynamicDelayAudioProcessor::DynamicDelayAudioProcessor():delayBuffer(2,1)
     wetMix = 0.0;
     feedback = 0.75;
     delayBufferLength = 1;
+    crossLength = 1.0;
+    crossCount = 1;
+    smoothCurrentCount = 0;
+    smoothFlagGlobal = false;
     
     delayReadPosition = 0;
     delayWritePosition = 0;
+    prevDelayReadPosition = 0;
     
     lastUIWidth = 370;
     lastUIHeight = 140;
@@ -55,6 +61,8 @@ float DynamicDelayAudioProcessor::getParameter (int index)
             return feedback;
         case delayLengthParam:
             return delayLength;
+        case crossLengthParam:
+            return crossLength;
         default:
             return 0.0f;
     }
@@ -76,8 +84,12 @@ void DynamicDelayAudioProcessor::setParameter (int index, float newValue)
             delayLength = newValue;
             delayReadPosition = (int) (delayWritePosition - (delayLength * getSampleRate()) + delayBufferLength) % delayBufferLength;
             break;
+        case crossLengthParam:
+            crossLength = newValue;
+            crossCount = (int) (crossLength * getSampleRate());
+            break;
         default:
-            break;;
+            break;
     }
 }
 
@@ -179,14 +191,18 @@ void DynamicDelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPe
 {
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
-    delayBufferLength  = (int) 2.0 * sampleRate;
+    delayBufferLength  = (int) (2.0 * sampleRate);
+    crossCount = (int) (crossLength * sampleRate);
     if (delayBufferLength < 1)
         delayBufferLength = 1;
-    
+    if (crossCount < 1)
+        crossCount = 1;
     delayBuffer.setSize(2, delayBufferLength);
     delayBuffer.clear();
     
     delayReadPosition = (int) (delayWritePosition - (delayLength * getSampleRate()) + delayBufferLength) % delayBufferLength;
+    prevDelayReadPosition = delayReadPosition;
+    smoothCurrentCount = 0;
 }
 
 void DynamicDelayAudioProcessor::releaseResources()
@@ -200,8 +216,13 @@ void DynamicDelayAudioProcessor::processBlock (juce::AudioSampleBuffer& buffer, 
     const int numInputChannels = getNumInputChannels();
     const int numOutputChannels = getNumOutputChannels();
     const int numSamples = buffer.getNumSamples();
-    
-    int dpr, dpw;
+    std::vector<float> smoothValue;
+
+    int dpr, dpw, prevdpr, smoothCount;
+    bool smoothFlag;
+
+    if (prevDelayReadPosition != delayReadPosition)
+        smoothFlagGlobal = true;
 
     // This is the place where you'd normally do the guts of your plugin's
     // audio processing...
@@ -209,14 +230,32 @@ void DynamicDelayAudioProcessor::processBlock (juce::AudioSampleBuffer& buffer, 
         float* channelData = buffer.getWritePointer(channel);
         float* delayData = delayBuffer.getWritePointer(juce::jmin(channel, delayBuffer.getNumChannels() - 1));
         
+        smoothCount = smoothCurrentCount;
         dpr = delayReadPosition;
         dpw = delayWritePosition;
-        
+        prevdpr = prevDelayReadPosition;
+        smoothValue.push_back(delayData[prevdpr]);
+        smoothFlag = smoothFlagGlobal;
+
         for (int i = 0; i < numSamples; ++i) {
             const float in = channelData[i];
             float out = 0.0;
             
             out = (dryMix * in + wetMix * delayData[dpr]);
+            if (smoothFlag == true)
+            {
+                if(++smoothCount <= crossCount)
+                {
+                    float scale = (float) smoothCount/crossCount;
+                    out = (dryMix * in + wetMix * (scale * delayData[dpr] + (1-scale)*smoothValue[channel]));
+                }
+                else
+                {
+                    smoothCount = 0;
+                    smoothFlag = false;
+                }
+                
+            }
             
             delayData[dpw] = in + (delayData[dpr] * feedback);
             
@@ -229,9 +268,12 @@ void DynamicDelayAudioProcessor::processBlock (juce::AudioSampleBuffer& buffer, 
         }
     }
     
+    smoothFlagGlobal = smoothFlag;
+    smoothCurrentCount = smoothCount;
     delayReadPosition = dpr;
     delayWritePosition = dpw;
-    
+    if(smoothFlagGlobal == false)
+        prevDelayReadPosition = delayReadPosition;
     // In case we have more outputs than inputs, this code clears any output
     // channels that didn't contain input data, (because these aren't
     // guaranteed to be empty - they may contain garbage).

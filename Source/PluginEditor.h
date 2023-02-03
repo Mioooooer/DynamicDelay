@@ -29,8 +29,8 @@ public:
 
 private:
     DynamicDelayAudioProcessor& processor;
-    juce::Label delayLengthLabel, feedbackLabel, dryMixLabel, wetMixLabel;
-    juce::Slider delayLengthSlider, feedbackSlider, dryMixSlider, wetMixSlider;
+    juce::Label delayLengthLabel, feedbackLabel, dryMixLabel, wetMixLabel, crossLengthLabel;
+    juce::Slider delayLengthSlider, feedbackSlider, dryMixSlider, wetMixSlider, crossLengthSlider;
     
     juce::ScopedPointer<juce::ResizableCornerComponent> resizer;
     juce::ComponentBoundsConstrainer resizeLimits;

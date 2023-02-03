@@ -71,6 +71,7 @@ public:
         dryMixParam,
         wetMixParam,
         feedbackParam,
+        crossLengthParam,
         numParameters
     };
     
@@ -78,6 +79,7 @@ public:
     float dryMix;
     float wetMix;
     float feedback;
+    float crossLength;
 
 private:
     // circular buffer variables
@@ -85,6 +87,10 @@ private:
     int delayBufferLength;
     int delayReadPosition;
     int delayWritePosition;
+    int prevDelayReadPosition;
+    int crossCount;
+    int smoothCurrentCount;
+    bool smoothFlagGlobal;
     
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DynamicDelayAudioProcessor)

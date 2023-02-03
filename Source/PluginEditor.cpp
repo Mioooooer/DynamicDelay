@@ -18,7 +18,8 @@ DynamicDelayAudioProcessorEditor::DynamicDelayAudioProcessorEditor(DynamicDelayA
      delayLengthLabel("", "Delay (sec):"),
      feedbackLabel("", "Feedback:"),
      dryMixLabel("", "Dry:"),
-     wetMixLabel("", "Wet:")
+     wetMixLabel("", "Wet:"),
+     crossLengthLabel("", "cross (sec):")
 {
     // In your constructor, you should add any child components, and
     // initialise any special settings that your component needs.
@@ -43,6 +44,11 @@ DynamicDelayAudioProcessorEditor::DynamicDelayAudioProcessorEditor(DynamicDelayA
     wetMixSlider.addListener(this);
     wetMixSlider.setRange(0.0, 1.0, 0.01);
     addAndMakeVisible(&wetMixSlider);
+
+    crossLengthSlider.setSliderStyle(juce::Slider::Rotary);
+    crossLengthSlider.addListener(this);
+    crossLengthSlider.setRange(0.0, 2.0, 0.01);
+    addAndMakeVisible(&crossLengthSlider);
     
     delayLengthLabel.attachToComponent(&delayLengthSlider, false);
     delayLengthLabel.setFont(juce::Font (11.0f));
@@ -56,6 +62,9 @@ DynamicDelayAudioProcessorEditor::DynamicDelayAudioProcessorEditor(DynamicDelayA
     wetMixLabel.attachToComponent(&wetMixSlider, false);
     wetMixLabel.setFont(juce::Font (11.0f));
     
+    crossLengthLabel.attachToComponent(&crossLengthSlider, false);
+    crossLengthLabel.setFont(juce::Font (11.0f));
+
     startTimer(50);
 
 }
@@ -72,6 +81,7 @@ void DynamicDelayAudioProcessorEditor::timerCallback()
     feedbackSlider.setValue(ourProcessor->feedback, juce::dontSendNotification);
     dryMixSlider.setValue(ourProcessor->dryMix, juce::dontSendNotification);
     wetMixSlider.setValue(ourProcessor->wetMix, juce::dontSendNotification);
+    crossLengthSlider.setValue(ourProcessor->crossLength, juce::dontSendNotification);
 }
 
 void DynamicDelayAudioProcessorEditor::sliderValueChanged(juce::Slider* slider)
@@ -84,13 +94,15 @@ void DynamicDelayAudioProcessorEditor::sliderValueChanged(juce::Slider* slider)
         getProcessor()->setParameterNotifyingHost(DynamicDelayAudioProcessor::dryMixParam, (float) dryMixSlider.getValue());
     } else if (slider == &wetMixSlider) {
         getProcessor()->setParameterNotifyingHost(DynamicDelayAudioProcessor::wetMixParam, (float) wetMixSlider.getValue());
+    } else if (slider == &crossLengthSlider) {
+        getProcessor()->setParameterNotifyingHost(DynamicDelayAudioProcessor::crossLengthParam, (float) crossLengthSlider.getValue());
     }
 }
 
 void DynamicDelayAudioProcessorEditor::paint (juce::Graphics& g)
 {
     // getFromFile();
-    g.fillAll (juce::Colours::white);
+    g.fillAll (juce::Colours::black);
     // g.drawImage (backgroundImage, 0, 0, getWidth(), getHeight(), 0, 0, backgroundImage.getWidth(), backgroundImage.getHeight(), false );
 
 
@@ -107,4 +119,5 @@ void DynamicDelayAudioProcessorEditor::resized()
     feedbackSlider.setBounds(200, 20, 150, 40);
     dryMixSlider.setBounds(20, 80, 150, 40);
     wetMixSlider.setBounds(200, 80, 150, 40);
+    crossLengthSlider.setBounds(20, 140, 150, 40);
 }

@@ -11,6 +11,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include <vector>
 
 //==============================================================================
 /*
@@ -90,7 +91,9 @@ private:
     int prevDelayReadPosition;
     int crossCount;
     int smoothCurrentCount;
+    int smoothWetCurrentCount;
     bool smoothFlagGlobal;
+    std::vector<std::vector<float> > smoothValue;
     
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DynamicDelayAudioProcessor)

@@ -24,6 +24,7 @@ DynamicDelayAudioProcessor::DynamicDelayAudioProcessor():delayBuffer(2,1)
     crossLength = 1.0;
     crossCount = 1;
     smoothCurrentCount = 0;
+    smoothWetCurrentCount = 0;
     smoothFlagGlobal = false;
     
     delayReadPosition = 0;
@@ -32,6 +33,7 @@ DynamicDelayAudioProcessor::DynamicDelayAudioProcessor():delayBuffer(2,1)
     
     lastUIWidth = 370;
     lastUIHeight = 140;
+    //smoothValue = {{}};
 
 }
 
@@ -87,6 +89,7 @@ void DynamicDelayAudioProcessor::setParameter (int index, float newValue)
         case crossLengthParam:
             crossLength = newValue;
             crossCount = (int) (crossLength * getSampleRate());
+            //smoothCurrentCount = 0;
             break;
         default:
             break;
@@ -203,6 +206,7 @@ void DynamicDelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPe
     delayReadPosition = (int) (delayWritePosition - (delayLength * getSampleRate()) + delayBufferLength) % delayBufferLength;
     prevDelayReadPosition = delayReadPosition;
     smoothCurrentCount = 0;
+    smoothWetCurrentCount = 0;
 }
 
 void DynamicDelayAudioProcessor::releaseResources()
@@ -216,13 +220,20 @@ void DynamicDelayAudioProcessor::processBlock (juce::AudioSampleBuffer& buffer, 
     const int numInputChannels = getNumInputChannels();
     const int numOutputChannels = getNumOutputChannels();
     const int numSamples = buffer.getNumSamples();
-    std::vector<float> smoothValue;
+    std::vector<float> templist;
 
-    int dpr, dpw, prevdpr, smoothCount;
+    int dpr, dpw, prevdpr, smoothCount, smoothWetCount;
     bool smoothFlag;
 
     if (prevDelayReadPosition != delayReadPosition)
         smoothFlagGlobal = true;
+
+    if (smoothValue.size() == 0)
+        for(int i = 0; i<numInputChannels; ++i)
+        {
+            smoothValue.push_back(templist);
+        }
+        
 
     // This is the place where you'd normally do the guts of your plugin's
     // audio processing...
@@ -231,10 +242,15 @@ void DynamicDelayAudioProcessor::processBlock (juce::AudioSampleBuffer& buffer, 
         float* delayData = delayBuffer.getWritePointer(juce::jmin(channel, delayBuffer.getNumChannels() - 1));
         
         smoothCount = smoothCurrentCount;
+        smoothWetCount = smoothWetCurrentCount;
         dpr = delayReadPosition;
         dpw = delayWritePosition;
         prevdpr = prevDelayReadPosition;
-        smoothValue.push_back(delayData[prevdpr]);
+        for(int i = 0;i < crossCount; i++)
+        {
+            smoothValue[channel].push_back(delayData[prevdpr]);
+            prevdpr = (prevdpr+1) % delayBufferLength;
+        }
         smoothFlag = smoothFlagGlobal;
 
         for (int i = 0; i < numSamples; ++i) {
@@ -246,12 +262,15 @@ void DynamicDelayAudioProcessor::processBlock (juce::AudioSampleBuffer& buffer, 
             {
                 if(++smoothCount <= crossCount)
                 {
+                    ++smoothWetCount;
                     float scale = (float) smoothCount/crossCount;
-                    out = (dryMix * in + wetMix * (scale * delayData[dpr] + (1-scale)*smoothValue[channel]));
+                    //out = (dryMix * in + wetMix * (scale * delayData[dpr] + (1-scale)*smoothValue[channel]));
+                    out = (dryMix * in + wetMix * (((float)smoothWetCount/crossCount) * scale * delayData[dpr] + (1-scale)*smoothValue[channel][smoothCount]));
                 }
                 else
                 {
                     smoothCount = 0;
+                    smoothWetCount = 0;
                     smoothFlag = false;
                 }
                 
@@ -267,9 +286,10 @@ void DynamicDelayAudioProcessor::processBlock (juce::AudioSampleBuffer& buffer, 
             channelData[i] = out;
         }
     }
-    
+    smoothValue.clear();
     smoothFlagGlobal = smoothFlag;
     smoothCurrentCount = smoothCount;
+    smoothWetCurrentCount = smoothWetCount;
     delayReadPosition = dpr;
     delayWritePosition = dpw;
     if(smoothFlagGlobal == false)

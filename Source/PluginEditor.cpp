@@ -25,7 +25,7 @@ DynamicDelayAudioProcessorEditor::DynamicDelayAudioProcessorEditor(DynamicDelayA
     // initialise any special settings that your component needs.
     setSize (690, 471);
     
-    delayLengthSlider.setSliderStyle(juce::Slider::Rotary);
+    delayLengthSlider.setSliderStyle(juce::Slider::LinearHorizontal);
     delayLengthSlider.addListener(this);
     delayLengthSlider.setRange(0.01, 2.0, 0.01);
     addAndMakeVisible(&delayLengthSlider);
